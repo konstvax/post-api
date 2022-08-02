@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
         // \App\Models\User::factory(10)->create();
 
         if (!Category::all()->count()) {
-            for ($i = 1; $i < 40; $i++) {
+            for ($i = 1; $i < 10; $i++) {
                 $parents = Category::inRandomOrder()
                     ->whereNull('parent_id')
                     ->get()
@@ -34,7 +34,7 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
 
-            Post::factory(100)->create();
+            Post::factory(20)->create();
         }
     }
 }

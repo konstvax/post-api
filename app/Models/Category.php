@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-
+use Illuminate\Database\Eloquent\Builder;
 
 
 /**
@@ -40,6 +40,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @method static \Illuminate\Database\Query\Builder|Category withTrashed()
  * @method static \Illuminate\Database\Query\Builder|Category withoutTrashed()
  * @mixin \Eloquent
+ * @method static Builder|Category rootCategories()
  */
 class Category extends Model
 {
@@ -50,6 +51,24 @@ class Category extends Model
      * @var string[]
      */
     protected $fillable = ['title', 'content', 'slug', 'parent_id'];
+
+
+    public static function boot ()
+    {
+        parent::boot();
+
+        self::deleting(function (Category $category) {
+
+            foreach ($category->children as $child)
+            {
+                $child->delete();
+            }
+
+            foreach ($category->posts as $post) {
+                $post->delete();
+            }
+        });
+    }
 
     /**
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -75,4 +94,43 @@ class Category extends Model
         return $this->hasMany(Post::class);
     }
 
+    /**
+     * @param Builder $query
+     * @return Builder
+     */
+    public function scopeRootCategories(Builder $query)
+    {
+        return $query->whereNull('parent_id');
+    }
+
+    /**
+     * @param $value
+     * @return void
+     */
+    public function setSlugAttribute($value)
+    {
+        $this->attributes['slug'] = $value ?? \Str::slug($this->title);
+    }
+
+    /**
+     * @param bool $toArray
+     * @return Category[]|Builder[]|\Illuminate\Database\Eloquent\Collection|\Illuminate\Support\Collection
+     */
+    public static function rootIds(bool $toArray = true)
+    {
+        $result = self::rootCategories()->get()
+            ->mapWithKeys(function ($model) use ($toArray) {
+                if ($toArray) {
+                    return [$model->id => $model->id];
+                } else {
+                    return [$model->id => $model->title];
+                }
+            });
+
+        if ($toArray) {
+            return $result->values()->toArray();
+        }
+
+        return $result;
+    }
 }
